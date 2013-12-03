@@ -6,15 +6,18 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 const (
 	listenAddr = "localhost:4000" // server address
 )
 
+//Global variable to track number of clients
+
 var (
 	pwd, _        = os.Getwd()
-	RootTemp      = template.Must(template.ParseFiles(pwd + "/chat.html"))
+	RootTemp      = template.Must(template.ParseFiles(pwd + "/index.html"))
 	JSON          = websocket.JSON           // codec for JSON
 	Message       = websocket.Message        // codec for string, []byte
 	ActiveClients = make(map[ClientConn]int) // map containing clients
@@ -63,17 +66,19 @@ func SockServer(ws *websocket.Conn) {
 			log.Println("Number of clients still connected ...", len(ActiveClients))
 			return
 		}
-
-		clientMessage = sockCli.clientIP + " Said: " + clientMessage
+    for cs, _ := range ActiveClients {
+		err = Message.Send(cs.websocket, strconv.Itoa(len(ActiveClients)))
+	}
+		clientMessage = sockCli.clientIP + " Says: " + clientMessage
 		for cs, _ := range ActiveClients {
-			if err = Message.Send(cs.websocket, clientMessage); err != nil {
+			if err = Message.Send(cs.websocket, clientMessage)
+			err != nil {
 				// we could not send the message to a peer
 				log.Println("Could not send message to ", cs.clientIP, err.Error())
 			}
 		}
 	}
 }
-
 // RootHandler renders the template for the root page
 func RootHandler(w http.ResponseWriter, req *http.Request) {
 	err := RootTemp.Execute(w, listenAddr)
